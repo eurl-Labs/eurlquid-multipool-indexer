@@ -238,6 +238,138 @@ app.get("/api/swaps/trader/:address", async (c) => {
   }
 });
 
+// NEW: Get swaps by DEX name and trader address (FIXED for your error)
+app.get("/api/swaps/dex/:dexName/trader/:address", async (c) => {
+  const dexName = c.req.param("dexName");
+  const address = c.req.param("address");
+  const limit = parseInt(c.req.query("limit") || "100");
+  const offset = parseInt(c.req.query("offset") || "0");
+
+  try {
+    const result = await db.execute(`
+      SELECT 
+        s.*,
+        p.token_a,
+        p.token_b,
+        p.creator as pool_creator
+      FROM swaps s
+      LEFT JOIN pools p ON s.pool_id = p.id
+      WHERE LOWER(s.dex_name) = LOWER('${dexName}') 
+        AND s.trader = '${address}'
+      ORDER BY s.timestamp DESC 
+      LIMIT ${limit} OFFSET ${offset}
+    `);
+
+    // Get statistics for this combination
+    const stats = await db.execute(`
+      SELECT 
+        COUNT(*) as total_swaps,
+        SUM(amount_in) as total_volume_in,
+        SUM(amount_out) as total_volume_out,
+        MIN(timestamp) as first_swap,
+        MAX(timestamp) as last_swap,
+        COUNT(DISTINCT pool_id) as unique_pools
+      FROM swaps 
+      WHERE LOWER(dex_name) = LOWER('${dexName}') 
+        AND trader = '${address}'
+    `);
+
+    return c.json({
+      swaps: result.rows,
+      dex_name: dexName,
+      trader: address,
+      count: result.rows.length,
+      limit: limit,
+      offset: offset,
+      statistics: stats.rows[0] || {},
+    });
+  } catch (error) {
+    return c.json({ 
+      error: "Failed to fetch swaps for DEX and trader", 
+      details: String(error) 
+    }, 500);
+  }
+});
+
+// NEW: Advanced swaps search with multiple filters
+app.get("/api/swaps/search", async (c) => {
+  const dexName = c.req.query("dex");
+  const trader = c.req.query("trader");
+  const poolId = c.req.query("pool_id");
+  const tokenIn = c.req.query("token_in");
+  const minAmount = c.req.query("min_amount");
+  const maxAmount = c.req.query("max_amount");
+  const fromDate = c.req.query("from_date");
+  const toDate = c.req.query("to_date");
+  const limit = parseInt(c.req.query("limit") || "100");
+  const offset = parseInt(c.req.query("offset") || "0");
+
+  try {
+    let query = `
+      SELECT 
+        s.*,
+        p.token_a,
+        p.token_b,
+        p.creator as pool_creator
+      FROM swaps s
+      LEFT JOIN pools p ON s.pool_id = p.id
+      WHERE 1=1
+    `;
+
+    // Build dynamic query based on provided filters
+    if (dexName) {
+      query += ` AND LOWER(s.dex_name) = LOWER('${dexName}')`;
+    }
+    if (trader) {
+      query += ` AND s.trader = '${trader}'`;
+    }
+    if (poolId) {
+      query += ` AND s.pool_id = '${poolId}'`;
+    }
+    if (tokenIn) {
+      query += ` AND s.token_in = '${tokenIn}'`;
+    }
+    if (minAmount) {
+      query += ` AND s.amount_in >= ${minAmount}`;
+    }
+    if (maxAmount) {
+      query += ` AND s.amount_in <= ${maxAmount}`;
+    }
+    if (fromDate) {
+      query += ` AND s.timestamp >= ${fromDate}`;
+    }
+    if (toDate) {
+      query += ` AND s.timestamp <= ${toDate}`;
+    }
+
+    query += ` ORDER BY s.timestamp DESC LIMIT ${limit} OFFSET ${offset}`;
+
+    const result = await db.execute(query);
+
+    return c.json({
+      swaps: result.rows,
+      count: result.rows.length,
+      filters: {
+        dex: dexName || "all",
+        trader: trader || "all",
+        pool_id: poolId || "all",
+        token_in: tokenIn || "all",
+        min_amount: minAmount || null,
+        max_amount: maxAmount || null,
+        from_date: fromDate || null,
+        to_date: toDate || null,
+        limit: limit,
+        offset: offset
+      }
+    });
+  } catch (error) {
+    return c.json({ 
+      error: "Failed to search swaps", 
+      details: String(error) 
+    }, 500);
+  }
+});
+
 // New endpoint: Get liquidity events by provider address
 app.get("/api/liquidity/provider/:address", async (c) => {
   const address = c.req.param("address");

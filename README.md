@@ -718,10 +718,10 @@ query GetPoolAnalytics($poolId: String!, $fromTimestamp: BigInt!) {
 }
 ```
 
-##### 9. Get Pools Created by User
+##### 9. Get Pools Created by User (Penting)
 ```graphql
 query GetPoolsByCreator($creatorAddress: String!) {
-  pools(
+  poolss(
     where: { creator: $creatorAddress }
     orderBy: "created_at"
     orderDirection: "desc"
@@ -745,7 +745,7 @@ query GetPoolsByCreator($creatorAddress: String!) {
 **Variables:**
 ```json
 {
-  "creatorAddress": "0xb34a4eaecb848d573a0410bc305787d5b69328b8"
+  "creatorAddress": "0xebFACa8463E1c3495a09684137fEd7A4b4574179"
 }
 ```
 

@@ -292,6 +292,146 @@ curl "http://localhost:42069/api/pools/available?sort_by=volume&limit=20"
 
 ---
 
+## 🆕 ENDPOINT BARU: Fix untuk Error DEX + Wallet Address
+
+### 4. **Get Swaps by DEX Name + Trader Address** 🎯
+
+**Endpoint:** `GET /api/swaps/dex/{dexName}/trader/{address}`
+
+**Deskripsi:** Mendapatkan data swap berdasarkan nama DEX dan alamat trader (wallet address) - **SOLUSI untuk error yang Anda alami!**
+
+**Path Parameters:**
+- `dexName` (required): Nama DEX ("Uniswap", "OneInch", "Curve", "Balancer")
+- `address` (required): Alamat wallet trader
+
+**Query Parameters:**
+- `limit` (optional): Jumlah maksimal data (default: 100)
+- `offset` (optional): Offset untuk pagination (default: 0)
+
+**Contoh Penggunaan:**
+```bash
+# Swap dari Uniswap oleh trader tertentu
+curl "http://localhost:42069/api/swaps/dex/Uniswap/trader/0xebFACa8463E1c3495a09684137fEd7A4b4574179"
+
+# Dengan pagination
+curl "http://localhost:42069/api/swaps/dex/Curve/trader/0xebFACa8463E1c3495a09684137fEd7A4b4574179?limit=50&offset=0"
+```
+
+**Response JSON:**
+```json
+{
+  "swaps": [
+    {
+      "id": "0xc11cedba8a272da202fdb5aabc3f242141ff7-2",
+      "pool_id": "0xe13a819a2714c9c4dcc864a30ddb2de467789",
+      "trader": "0xebfaca8463e1c3495a09684137fed7a4b4574179",
+      "dex_name": "Uniswap",
+      "token_in": "0x6eb23ca35d4f467d02c326b1e23c8b7",
+      "amount_in": "5000000000000000000",
+      "amount_out": "5979642417",
+      "timestamp": 1755011384,
+      "block_number": 58118612,
+      "transaction_hash": "0xc11cedba8a272da202fdb5aabc3f242141ff7",
+      "token_a": "0x6eb23ca35d4f467d02c326b1e23c8b7",
+      "token_b": "0xe13a819a2714c9c4dcc864a30ddb2de467789",
+      "pool_creator": "0xebfaca8463e1c3495a09684137fed7a4b4574179"
+    }
+  ],
+  "dex_name": "Uniswap",
+  "trader": "0xebFACa8463E1c3495a09684137fEd7A4b4574179",
+  "count": 1,
+  "limit": 100,
+  "offset": 0,
+  "statistics": {
+    "total_swaps": "1",
+    "total_volume_in": "5000000000000000000",
+    "total_volume_out": "5979642417",
+    "first_swap": 1755011384,
+    "last_swap": 1755011384,
+    "unique_pools": "1"
+  }
+}
+```
+
+### 5. **Advanced Swaps Search** 🔍
+
+**Endpoint:** `GET /api/swaps/search`
+
+**Deskripsi:** Pencarian swap dengan multiple filter (alternatif fleksibel untuk query kompleks)
+
+**Query Parameters:**
+- `dex` (optional): Filter berdasarkan nama DEX
+- `trader` (optional): Filter berdasarkan alamat trader
+- `pool_id` (optional): Filter berdasarkan pool ID
+- `token_in` (optional): Filter berdasarkan token input
+- `min_amount` (optional): Minimum amount_in
+- `max_amount` (optional): Maximum amount_in
+- `from_date` (optional): Filter dari timestamp
+- `to_date` (optional): Filter sampai timestamp
+- `limit` (optional): Jumlah maksimal data (default: 100)
+- `offset` (optional): Offset untuk pagination (default: 0)
+
+**Contoh Penggunaan:**
+```bash
+# Kombinasi DEX + trader (sama seperti endpoint di atas)
+curl "http://localhost:42069/api/swaps/search?dex=Uniswap&trader=0xebFACa8463E1c3495a09684137fEd7A4b4574179"
+
+# Swap besar di Curve (> 1000 tokens)
+curl "http://localhost:42069/api/swaps/search?dex=Curve&min_amount=1000000000000000000000"
+
+# Swap dalam rentang waktu tertentu
+curl "http://localhost:42069/api/swaps/search?from_date=1672531200&to_date=1672617600"
+
+# Multiple filters
+curl "http://localhost:42069/api/swaps/search?dex=Balancer&trader=0x123...&min_amount=1000000000000000000&limit=25"
+```
+
+---
+
+## 🔧 Solusi untuk Error GraphQL
+
+**Masalah:** Variable '$trader' is not defined by operation 'GetTradingByDEX'
+
+**Solusi:** Gunakan query GraphQL yang sudah diperbaiki di file `important-query.md`:
+
+```graphql
+query GetTradingByDEXAndTrader($dexName: String!, $trader: String!, $limit: Int = 50) {
+  swapss(
+    where: { 
+      dex_name: $dexName,
+      trader: $trader
+    }
+    orderBy: "timestamp"
+    orderDirection: "desc"
+    limit: $limit
+  ) {
+    items {
+      id
+      pool_id
+      trader
+      dex_name
+      token_in
+      amount_in
+      amount_out
+      timestamp
+      block_number
+      transaction_hash
+    }
+  }
+}
+```
+
+**Variables:**
+```json
+{
+  "dexName": "Uniswap",
+  "trader": "0xebFACa8463E1c3495a09684137fEd7A4b4574179",
+  "limit": 100
+}
+```
+
+---
+
 ## 📊 Data yang Tersedia
 
 Berdasarkan indexing saat ini, server telah mengindeks:
