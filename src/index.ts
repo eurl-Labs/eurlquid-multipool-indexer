@@ -22,6 +22,10 @@ ponder.on("SwapContract:PoolCreated", async ({ event, context }) => {
 ponder.on("SwapContract:Swap", async ({ event, context }) => {
   const { poolId, trader, tokenIn, amountIn, amountOut } = event.args;
   
+  // Get pool info to determine token_out
+  const pool = await context.db.find(pools, { id: poolId });
+  const tokenOut = tokenIn === pool?.token_a ? pool?.token_b : pool?.token_a;
+  
   // Create swap record
   await context.db.insert(swaps).values({
     id: `${event.transaction.hash}-${event.log.logIndex}`,
@@ -29,6 +33,7 @@ ponder.on("SwapContract:Swap", async ({ event, context }) => {
     trader: trader,
     dex_name: "Uniswap", // Set nama DEX aggregator
     token_in: tokenIn,
+    token_out: tokenOut || "0x0000000000000000000000000000000000000000", // fallback
     amount_in: amountIn,
     amount_out: amountOut,
     timestamp: BigInt(event.block.timestamp),
@@ -75,12 +80,17 @@ ponder.on("OneInchContract:PoolCreated", async ({ event, context }) => {
 ponder.on("OneInchContract:Swap", async ({ event, context }) => {
   const { poolId, trader, tokenIn, amountIn, amountOut } = event.args;
   
+  // Get pool info to determine token_out
+  const pool = await context.db.find(pools, { id: poolId });
+  const tokenOut = tokenIn === pool?.token_a ? pool?.token_b : pool?.token_a;
+  
   await context.db.insert(swaps).values({
     id: `${event.transaction.hash}-${event.log.logIndex}`,
     pool_id: poolId,
     trader: trader,
     dex_name: "OneInch",
     token_in: tokenIn,
+    token_out: tokenOut || "0x0000000000000000000000000000000000000000", // fallback
     amount_in: amountIn,
     amount_out: amountOut,
     timestamp: BigInt(event.block.timestamp),
@@ -125,12 +135,17 @@ ponder.on("CurveContract:PoolCreated", async ({ event, context }) => {
 ponder.on("CurveContract:Swap", async ({ event, context }) => {
   const { poolId, trader, tokenIn, amountIn, amountOut } = event.args;
   
+  // Get pool info to determine token_out
+  const pool = await context.db.find(pools, { id: poolId });
+  const tokenOut = tokenIn === pool?.token_a ? pool?.token_b : pool?.token_a;
+  
   await context.db.insert(swaps).values({
     id: `${event.transaction.hash}-${event.log.logIndex}`,
     pool_id: poolId,
     trader: trader,
     dex_name: "Curve",
     token_in: tokenIn,
+    token_out: tokenOut || "0x0000000000000000000000000000000000000000", // fallback
     amount_in: amountIn,
     amount_out: amountOut,
     timestamp: BigInt(event.block.timestamp),
@@ -175,12 +190,17 @@ ponder.on("BalancerContract:PoolCreated", async ({ event, context }) => {
 ponder.on("BalancerContract:Swap", async ({ event, context }) => {
   const { poolId, trader, tokenIn, amountIn, amountOut } = event.args;
   
+  // Get pool info to determine token_out
+  const pool = await context.db.find(pools, { id: poolId });
+  const tokenOut = tokenIn === pool?.token_a ? pool?.token_b : pool?.token_a;
+  
   await context.db.insert(swaps).values({
     id: `${event.transaction.hash}-${event.log.logIndex}`,
     pool_id: poolId,
     trader: trader,
     dex_name: "Balancer",
     token_in: tokenIn,
+    token_out: tokenOut || "0x0000000000000000000000000000000000000000", // fallback
     amount_in: amountIn,
     amount_out: amountOut,
     timestamp: BigInt(event.block.timestamp),

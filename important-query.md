@@ -117,6 +117,7 @@ query GetUserTradingHistory($walletAddress: String!, $limit: Int = 50) {
       trader
       dex_name
       token_in
+      token_out
       amount_in
       amount_out
       timestamp
@@ -165,6 +166,7 @@ query GetTradingByDEX($dexName: String!, $limit: Int = 50) {
       trader
       dex_name
       token_in
+      token_out
       amount_in
       amount_out
       timestamp
@@ -216,6 +218,7 @@ query GetTradingByDEXAndTrader($dexName: String!, $trader: String!, $limit: Int 
       trader
       dex_name
       token_in
+      token_out
       amount_in
       amount_out
       timestamp
@@ -268,6 +271,7 @@ query GetAllTradingData($dexName: String, $trader: String, $limit: Int = 50) {
       trader
       dex_name
       token_in
+      token_out
       amount_in
       amount_out
       timestamp

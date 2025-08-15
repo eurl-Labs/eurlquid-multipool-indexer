@@ -20,6 +20,7 @@ export const swaps = onchainTable("swaps", (t) => ({
   trader: t.hex().notNull(),
   dex_name: t.text().notNull().default("Uniswap"), // DEX aggregator name
   token_in: t.hex().notNull(),
+  token_out: t.hex().notNull(), // Added token_out field
   amount_in: t.bigint().notNull(),
   amount_out: t.bigint().notNull(),
   timestamp: t.bigint().notNull(),
