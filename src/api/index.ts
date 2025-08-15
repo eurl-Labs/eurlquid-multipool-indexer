@@ -310,6 +310,298 @@ app.get("/api/debug/tables", async (c) => {
   }
 });
 
+// ===== QUERY 1: Transaction History dengan Filter DEX =====
+app.get("/api/transactions/history", async (c) => {
+  const dexFilter = c.req.query("dex"); // Optional: filter by specific DEX
+  const limit = parseInt(c.req.query("limit") || "100");
+  const offset = parseInt(c.req.query("offset") || "0");
+  const fromDate = c.req.query("from_date"); // Optional: timestamp filter
+  const toDate = c.req.query("to_date"); // Optional: timestamp filter
+
+  try {
+    let query = `
+      SELECT 
+        s.id as transaction_id,
+        s.transaction_hash,
+        s.dex_name,
+        s.trader,
+        s.pool_id,
+        s.token_in,
+        s.amount_in,
+        s.amount_out,
+        s.timestamp,
+        s.block_number,
+        p.token_a,
+        p.token_b,
+        p.creator as pool_creator
+      FROM swaps s
+      LEFT JOIN pools p ON s.pool_id = p.id
+      WHERE 1=1
+    `;
+
+    // Add DEX filter if provided
+    if (dexFilter) {
+      query += ` AND LOWER(s.dex_name) = LOWER('${dexFilter}')`;
+    }
+
+    // Add date filters if provided
+    if (fromDate) {
+      query += ` AND s.timestamp >= ${fromDate}`;
+    }
+    if (toDate) {
+      query += ` AND s.timestamp <= ${toDate}`;
+    }
+
+    query += ` ORDER BY s.timestamp DESC LIMIT ${limit} OFFSET ${offset}`;
+
+    const result = await db.execute(query);
+
+    // Get available DEX names for filtering
+    const dexList = await db.execute(`
+      SELECT DISTINCT dex_name, COUNT(*) as transaction_count 
+      FROM swaps 
+      GROUP BY dex_name 
+      ORDER BY transaction_count DESC
+    `);
+
+    return c.json({
+      transactions: result.rows,
+      count: result.rows.length,
+      filters: {
+        dex: dexFilter || "all",
+        from_date: fromDate || null,
+        to_date: toDate || null,
+        limit: limit,
+        offset: offset
+      },
+      available_dex: dexList.rows,
+      total_transactions: dexList.rows.reduce((sum: number, dex: any) => sum + parseInt(dex.transaction_count), 0)
+    });
+  } catch (error) {
+    return c.json({ 
+      error: "Failed to fetch transaction history", 
+      details: String(error) 
+    }, 500);
+  }
+});
+
+// ===== QUERY 2: Pool yang Tersedia dengan Filter DEX =====
+app.get("/api/pools/available", async (c) => {
+  const dexFilter = c.req.query("dex"); // Optional: filter by specific DEX
+  const tokenFilter = c.req.query("token"); // Optional: filter by token address
+  const limit = parseInt(c.req.query("limit") || "100");
+  const offset = parseInt(c.req.query("offset") || "0");
+  const sortBy = c.req.query("sort_by") || "created_at"; // created_at, total_supply, dex_name
+
+  try {
+    let query = `
+      SELECT 
+        p.id as pool_id,
+        p.token_a,
+        p.token_b,
+        p.creator,
+        p.dex_name,
+        p.reserve_a,
+        p.reserve_b,
+        p.total_supply,
+        p.created_at,
+        p.block_number,
+        p.transaction_hash,
+        COUNT(s.id) as total_swaps,
+        COALESCE(SUM(s.amount_in), 0) as total_volume,
+        COUNT(DISTINCT s.trader) as unique_traders,
+        COUNT(l.id) as liquidity_events
+      FROM pools p
+      LEFT JOIN swaps s ON p.id = s.pool_id
+      LEFT JOIN "liquidityEvents" l ON p.id = l.pool_id
+      WHERE 1=1
+    `;
+
+    // Add DEX filter if provided
+    if (dexFilter) {
+      query += ` AND LOWER(p.dex_name) = LOWER('${dexFilter}')`;
+    }
+
+    // Add token filter if provided (search in both token_a and token_b)
+    if (tokenFilter) {
+      query += ` AND (LOWER(p.token_a) = LOWER('${tokenFilter}') OR LOWER(p.token_b) = LOWER('${tokenFilter}'))`;
+    }
+
+    query += ` GROUP BY p.id, p.token_a, p.token_b, p.creator, p.dex_name, p.reserve_a, p.reserve_b, p.total_supply, p.created_at, p.block_number, p.transaction_hash`;
+
+    // Add sorting
+    switch (sortBy) {
+      case "volume":
+        query += ` ORDER BY total_volume DESC`;
+        break;
+      case "swaps":
+        query += ` ORDER BY total_swaps DESC`;
+        break;
+      case "dex_name":
+        query += ` ORDER BY p.dex_name ASC, p.created_at DESC`;
+        break;
+      default:
+        query += ` ORDER BY p.created_at DESC`;
+    }
+
+    query += ` LIMIT ${limit} OFFSET ${offset}`;
+
+    const result = await db.execute(query);
+
+    // Get available DEX names and their pool counts
+    const dexStats = await db.execute(`
+      SELECT 
+        dex_name, 
+        COUNT(*) as pool_count,
+        SUM(reserve_a + reserve_b) as total_liquidity
+      FROM pools 
+      GROUP BY dex_name 
+      ORDER BY pool_count DESC
+    `);
+
+    // Get available token addresses
+    const tokenStats = await db.execute(`
+      SELECT token_address, COUNT(*) as pool_count
+      FROM (
+        SELECT token_a as token_address FROM pools
+        UNION ALL
+        SELECT token_b as token_address FROM pools
+      ) as all_tokens
+      GROUP BY token_address
+      ORDER BY pool_count DESC
+      LIMIT 20
+    `);
+
+    return c.json({
+      pools: result.rows,
+      count: result.rows.length,
+      filters: {
+        dex: dexFilter || "all",
+        token: tokenFilter || "all",
+        sort_by: sortBy,
+        limit: limit,
+        offset: offset
+      },
+      available_dex: dexStats.rows,
+      popular_tokens: tokenStats.rows
+    });
+  } catch (error) {
+    return c.json({ 
+      error: "Failed to fetch available pools", 
+      details: String(error) 
+    }, 500);
+  }
+});
+
+// ===== QUERY 3: Pool yang Dibuat oleh Creator Address Tertentu =====
+app.get("/api/pools/by-creator/:address", async (c) => {
+  const creatorAddress = c.req.param("address");
+  const dexFilter = c.req.query("dex"); // Optional: filter by specific DEX
+  const limit = parseInt(c.req.query("limit") || "100");
+  const offset = parseInt(c.req.query("offset") || "0");
+  const includeStats = c.req.query("include_stats") === "true";
+
+  try {
+    let query = `
+      SELECT 
+        p.id as pool_id,
+        p.token_a,
+        p.token_b,
+        p.creator,
+        p.dex_name,
+        p.reserve_a,
+        p.reserve_b,
+        p.total_supply,
+        p.created_at,
+        p.block_number,
+        p.transaction_hash
+    `;
+
+    if (includeStats) {
+      query += `,
+        COUNT(s.id) as total_swaps,
+        COALESCE(SUM(s.amount_in), 0) as total_volume,
+        COUNT(DISTINCT s.trader) as unique_traders,
+        COUNT(l.id) as liquidity_events,
+        MAX(s.timestamp) as last_swap_time
+      `;
+    }
+
+    query += `
+      FROM pools p
+    `;
+
+    if (includeStats) {
+      query += `
+        LEFT JOIN swaps s ON p.id = s.pool_id
+        LEFT JOIN "liquidityEvents" l ON p.id = l.pool_id
+      `;
+    }
+
+    query += ` WHERE p.creator = '${creatorAddress}'`;
+
+    // Add DEX filter if provided
+    if (dexFilter) {
+      query += ` AND LOWER(p.dex_name) = LOWER('${dexFilter}')`;
+    }
+
+    if (includeStats) {
+      query += ` GROUP BY p.id, p.token_a, p.token_b, p.creator, p.dex_name, p.reserve_a, p.reserve_b, p.total_supply, p.created_at, p.block_number, p.transaction_hash`;
+    }
+
+    query += ` ORDER BY p.created_at DESC LIMIT ${limit} OFFSET ${offset}`;
+
+    const result = await db.execute(query);
+
+    // Get creator statistics
+    const creatorStats = await db.execute(`
+      SELECT 
+        p.dex_name,
+        COUNT(*) as pools_created,
+        SUM(p.reserve_a + p.reserve_b) as total_liquidity_provided,
+        MIN(p.created_at) as first_pool_created,
+        MAX(p.created_at) as last_pool_created
+      FROM pools p
+      WHERE p.creator = '${creatorAddress}'
+      GROUP BY p.dex_name
+      ORDER BY pools_created DESC
+    `);
+
+    // Get overall creator summary
+    const creatorSummary = await db.execute(`
+      SELECT 
+        COUNT(*) as total_pools_created,
+        COUNT(DISTINCT p.dex_name) as dex_platforms_used,
+        SUM(p.reserve_a + p.reserve_b) as total_liquidity,
+        MIN(p.created_at) as account_first_activity,
+        MAX(p.created_at) as account_last_activity
+      FROM pools p
+      WHERE p.creator = '${creatorAddress}'
+    `);
+
+    return c.json({
+      creator_address: creatorAddress,
+      pools: result.rows,
+      count: result.rows.length,
+      filters: {
+        dex: dexFilter || "all",
+        include_stats: includeStats,
+        limit: limit,
+        offset: offset
+      },
+      creator_stats: {
+        summary: creatorSummary.rows[0] || {},
+        by_dex: creatorStats.rows
+      }
+    });
+  } catch (error) {
+    return c.json({ 
+      error: "Failed to fetch pools by creator", 
+      details: String(error) 
+    }, 500);
+  }
+});
+
 // Special endpoint for testing specific address
 app.get("/api/test/address/:address", async (c) => {
   const address = c.req.param("address");

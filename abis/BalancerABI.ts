@@ -1,4 +1,4 @@
-export const UniswapABI = [
+export const BalancerABI = [
   { inputs: [], name: "InsufficientAmount", type: "error" },
   { inputs: [], name: "InsufficientLiquidity", type: "error" },
   { inputs: [], name: "InsufficientReserves", type: "error" },
