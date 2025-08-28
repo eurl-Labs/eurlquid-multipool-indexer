@@ -1,11 +1,12 @@
 import { onchainTable } from "ponder";
 
 export const pools = onchainTable("pools", (t) => ({
-  id: t.hex().primaryKey(),
+  id: t.text().primaryKey(),            // ${dex_name}:${poolId}
+  pool_id: t.hex().notNull(),           // bytes32 as hex (original poolId)
+  dex_name: t.text().notNull(),         // DEX name
   token_a: t.hex().notNull(),
   token_b: t.hex().notNull(),
   creator: t.hex().notNull(),
-  dex_name: t.text().notNull().default("Uniswap"), // DEX aggregator name
   reserve_a: t.bigint().notNull(),
   reserve_b: t.bigint().notNull(),
   total_supply: t.bigint().notNull(),
@@ -16,7 +17,7 @@ export const pools = onchainTable("pools", (t) => ({
 
 export const swaps = onchainTable("swaps", (t) => ({
   id: t.text().primaryKey(),
-  pool_id: t.hex().notNull(),
+  pool_id: t.text().notNull(),             // references pools.id (composite key)
   trader: t.hex().notNull(),
   dex_name: t.text().notNull().default("Uniswap"), // DEX aggregator name
   token_in: t.hex().notNull(),
@@ -30,7 +31,7 @@ export const swaps = onchainTable("swaps", (t) => ({
 
 export const liquidityEvents = onchainTable("liquidityEvents", (t) => ({
   id: t.text().primaryKey(), // transactionHash-logIndex
-  pool_id: t.hex().notNull(),
+  pool_id: t.text().notNull(),             // references pools.id (composite key)
   provider: t.hex().notNull(),
   amount_a: t.bigint().notNull(),
   amount_b: t.bigint().notNull(),

@@ -4,11 +4,12 @@ import { pools, swaps, liquidityEvents } from "ponder:schema";
 // Handle PoolCreated events
 ponder.on("SwapContract:PoolCreated", async ({ event, context }) => {
   await context.db.insert(pools).values({
-    id: event.args.poolId,
+    id: `Uniswap:${event.args.poolId}`,
+    pool_id: event.args.poolId,
+    dex_name: "Uniswap",
     token_a: event.args.tokenA,
     token_b: event.args.tokenB,
     creator: event.transaction.from,
-    dex_name: "Uniswap", // Set nama DEX aggregator
     reserve_a: 0n,
     reserve_b: 0n,
     total_supply: 0n,
@@ -24,7 +25,7 @@ ponder.on("SwapContract:Swapped", async ({ event, context }) => {
 
   await context.db.insert(swaps).values({
     id: `${event.transaction.hash}-${event.log.logIndex}`,
-    pool_id: poolId,
+    pool_id: `Uniswap:${poolId}`,
     trader: user, // dari ABI: 'user'
     dex_name: "Uniswap",
     token_in: tokenIn,
@@ -43,7 +44,7 @@ ponder.on("SwapContract:LiquidityAdded", async ({ event, context }) => {
 
   await context.db.insert(liquidityEvents).values({
     id: `${event.transaction.hash}-${event.log.logIndex}`,
-    pool_id: poolId,
+    pool_id: `Uniswap:${poolId}`,
     provider: event.transaction.from, // sintetis
     amount_a: amountA,
     amount_b: amountB,
@@ -57,11 +58,12 @@ ponder.on("SwapContract:LiquidityAdded", async ({ event, context }) => {
 // ===== ONEINCH CONTRACT HANDLERS =====
 ponder.on("OneInchContract:PoolCreated", async ({ event, context }) => {
   await context.db.insert(pools).values({
-    id: event.args.poolId,
+    id: `OneInch:${event.args.poolId}`,
+    pool_id: event.args.poolId,
+    dex_name: "OneInch",
     token_a: event.args.tokenA,
     token_b: event.args.tokenB,
     creator: event.transaction.from,
-    dex_name: "OneInch",
     reserve_a: 0n,
     reserve_b: 0n,
     total_supply: 0n,
@@ -76,9 +78,9 @@ ponder.on("OneInchContract:Swapped", async ({ event, context }) => {
 
   await context.db.insert(swaps).values({
     id: `${event.transaction.hash}-${event.log.logIndex}`,
-    pool_id: poolId,
+    pool_id: `OneInch:${poolId}`,
     trader: user, // dari ABI: 'user'
-    dex_name: "Uniswap",
+    dex_name: "OneInch",
     token_in: tokenIn,
     token_out: tokenOut, // sudah ada di ABI, tak perlu hitung dari pool
     amount_in: amountIn,
@@ -94,7 +96,7 @@ ponder.on("OneInchContract:LiquidityAdded", async ({ event, context }) => {
 
   await context.db.insert(liquidityEvents).values({
     id: `${event.transaction.hash}-${event.log.logIndex}`,
-    pool_id: poolId,
+    pool_id: `OneInch:${poolId}`,
     provider: event.transaction.from, // sintetis
     amount_a: amountA,
     amount_b: amountB,
@@ -108,11 +110,12 @@ ponder.on("OneInchContract:LiquidityAdded", async ({ event, context }) => {
 // ===== CURVE CONTRACT HANDLERS =====
 ponder.on("CurveContract:PoolCreated", async ({ event, context }) => {
   await context.db.insert(pools).values({
-    id: event.args.poolId,
+    id: `Curve:${event.args.poolId}`,
+    pool_id: event.args.poolId,
+    dex_name: "Curve",
     token_a: event.args.tokenA,
     token_b: event.args.tokenB,
     creator: event.transaction.from,
-    dex_name: "Curve",
     reserve_a: 0n,
     reserve_b: 0n,
     total_supply: 0n,
@@ -127,9 +130,9 @@ ponder.on("CurveContract:Swapped", async ({ event, context }) => {
 
   await context.db.insert(swaps).values({
     id: `${event.transaction.hash}-${event.log.logIndex}`,
-    pool_id: poolId,
+    pool_id: `Curve:${poolId}`,
     trader: user, // dari ABI: 'user'
-    dex_name: "Uniswap",
+    dex_name: "Curve",
     token_in: tokenIn,
     token_out: tokenOut, // sudah ada di ABI, tak perlu hitung dari pool
     amount_in: amountIn,
@@ -145,7 +148,7 @@ ponder.on("CurveContract:LiquidityAdded", async ({ event, context }) => {
 
   await context.db.insert(liquidityEvents).values({
     id: `${event.transaction.hash}-${event.log.logIndex}`,
-    pool_id: poolId,
+    pool_id: `Curve:${poolId}`,
     provider: event.transaction.from, // sintetis
     amount_a: amountA,
     amount_b: amountB,
@@ -159,11 +162,12 @@ ponder.on("CurveContract:LiquidityAdded", async ({ event, context }) => {
 // ===== BALANCER CONTRACT HANDLERS =====
 ponder.on("BalancerContract:PoolCreated", async ({ event, context }) => {
   await context.db.insert(pools).values({
-    id: event.args.poolId,
+    id: `Balancer:${event.args.poolId}`,
+    pool_id: event.args.poolId,
+    dex_name: "Balancer",
     token_a: event.args.tokenA,
     token_b: event.args.tokenB,
     creator: event.transaction.from,
-    dex_name: "Balancer",
     reserve_a: 0n,
     reserve_b: 0n,
     total_supply: 0n,
@@ -178,9 +182,9 @@ ponder.on("BalancerContract:Swapped", async ({ event, context }) => {
 
   await context.db.insert(swaps).values({
     id: `${event.transaction.hash}-${event.log.logIndex}`,
-    pool_id: poolId,
+    pool_id: `Balancer:${poolId}`,
     trader: user, // dari ABI: 'user'
-    dex_name: "Uniswap",
+    dex_name: "Balancer",
     token_in: tokenIn,
     token_out: tokenOut, // sudah ada di ABI, tak perlu hitung dari pool
     amount_in: amountIn,
@@ -190,12 +194,13 @@ ponder.on("BalancerContract:Swapped", async ({ event, context }) => {
     transaction_hash: event.transaction.hash,
   });
 });
+
 ponder.on("BalancerContract:LiquidityAdded", async ({ event, context }) => {
   const { poolId, amountA, amountB } = event.args;
 
   await context.db.insert(liquidityEvents).values({
     id: `${event.transaction.hash}-${event.log.logIndex}`,
-    pool_id: poolId,
+    pool_id: `Balancer:${poolId}`,
     provider: event.transaction.from, // sintetis
     amount_a: amountA,
     amount_b: amountB,
