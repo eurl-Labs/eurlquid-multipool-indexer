@@ -19,21 +19,16 @@ ponder.on("SwapContract:PoolCreated", async ({ event, context }) => {
 });
 
 // Handle Swap events
-ponder.on("SwapContract:Swap", async ({ event, context }) => {
-  const { poolId, trader, tokenIn, amountIn, amountOut } = event.args;
-  
-  // Get pool info to determine token_out
-  const pool = await context.db.find(pools, { id: poolId });
-  const tokenOut = tokenIn === pool?.token_a ? pool?.token_b : pool?.token_a;
-  
-  // Create swap record
+ponder.on("SwapContract:Swapped", async ({ event, context }) => {
+  const { poolId, user, tokenIn, tokenOut, amountIn, amountOut } = event.args;
+
   await context.db.insert(swaps).values({
     id: `${event.transaction.hash}-${event.log.logIndex}`,
     pool_id: poolId,
-    trader: trader,
-    dex_name: "Uniswap", // Set nama DEX aggregator
+    trader: user, // dari ABI: 'user'
+    dex_name: "Uniswap",
     token_in: tokenIn,
-    token_out: tokenOut || "0x0000000000000000000000000000000000000000", // fallback
+    token_out: tokenOut, // sudah ada di ABI, tak perlu hitung dari pool
     amount_in: amountIn,
     amount_out: amountOut,
     timestamp: BigInt(event.block.timestamp),
@@ -44,16 +39,15 @@ ponder.on("SwapContract:Swap", async ({ event, context }) => {
 
 // Handle LiquidityAdded events
 ponder.on("SwapContract:LiquidityAdded", async ({ event, context }) => {
-  const { poolId, provider, amountA, amountB, liquidity } = event.args;
-  
-  // Create liquidity event record
+  const { poolId, amountA, amountB } = event.args;
+
   await context.db.insert(liquidityEvents).values({
     id: `${event.transaction.hash}-${event.log.logIndex}`,
     pool_id: poolId,
-    provider: provider,
+    provider: event.transaction.from, // sintetis
     amount_a: amountA,
     amount_b: amountB,
-    liquidity: liquidity,
+    liquidity: amountA + amountB, // atau null / hapus kolom jika tak perlu
     timestamp: BigInt(event.block.timestamp),
     block_number: BigInt(event.block.number),
     transaction_hash: event.transaction.hash,
@@ -77,20 +71,16 @@ ponder.on("OneInchContract:PoolCreated", async ({ event, context }) => {
   });
 });
 
-ponder.on("OneInchContract:Swap", async ({ event, context }) => {
-  const { poolId, trader, tokenIn, amountIn, amountOut } = event.args;
-  
-  // Get pool info to determine token_out
-  const pool = await context.db.find(pools, { id: poolId });
-  const tokenOut = tokenIn === pool?.token_a ? pool?.token_b : pool?.token_a;
-  
+ponder.on("OneInchContract:Swapped", async ({ event, context }) => {
+  const { poolId, user, tokenIn, tokenOut, amountIn, amountOut } = event.args;
+
   await context.db.insert(swaps).values({
     id: `${event.transaction.hash}-${event.log.logIndex}`,
     pool_id: poolId,
-    trader: trader,
-    dex_name: "OneInch",
+    trader: user, // dari ABI: 'user'
+    dex_name: "Uniswap",
     token_in: tokenIn,
-    token_out: tokenOut || "0x0000000000000000000000000000000000000000", // fallback
+    token_out: tokenOut, // sudah ada di ABI, tak perlu hitung dari pool
     amount_in: amountIn,
     amount_out: amountOut,
     timestamp: BigInt(event.block.timestamp),
@@ -100,15 +90,15 @@ ponder.on("OneInchContract:Swap", async ({ event, context }) => {
 });
 
 ponder.on("OneInchContract:LiquidityAdded", async ({ event, context }) => {
-  const { poolId, provider, amountA, amountB, liquidity } = event.args;
-  
+  const { poolId, amountA, amountB } = event.args;
+
   await context.db.insert(liquidityEvents).values({
     id: `${event.transaction.hash}-${event.log.logIndex}`,
     pool_id: poolId,
-    provider: provider,
+    provider: event.transaction.from, // sintetis
     amount_a: amountA,
     amount_b: amountB,
-    liquidity: liquidity,
+    liquidity: amountA + amountB, // atau null / hapus kolom jika tak perlu
     timestamp: BigInt(event.block.timestamp),
     block_number: BigInt(event.block.number),
     transaction_hash: event.transaction.hash,
@@ -132,20 +122,16 @@ ponder.on("CurveContract:PoolCreated", async ({ event, context }) => {
   });
 });
 
-ponder.on("CurveContract:Swap", async ({ event, context }) => {
-  const { poolId, trader, tokenIn, amountIn, amountOut } = event.args;
-  
-  // Get pool info to determine token_out
-  const pool = await context.db.find(pools, { id: poolId });
-  const tokenOut = tokenIn === pool?.token_a ? pool?.token_b : pool?.token_a;
-  
+ponder.on("CurveContract:Swapped", async ({ event, context }) => {
+  const { poolId, user, tokenIn, tokenOut, amountIn, amountOut } = event.args;
+
   await context.db.insert(swaps).values({
     id: `${event.transaction.hash}-${event.log.logIndex}`,
     pool_id: poolId,
-    trader: trader,
-    dex_name: "Curve",
+    trader: user, // dari ABI: 'user'
+    dex_name: "Uniswap",
     token_in: tokenIn,
-    token_out: tokenOut || "0x0000000000000000000000000000000000000000", // fallback
+    token_out: tokenOut, // sudah ada di ABI, tak perlu hitung dari pool
     amount_in: amountIn,
     amount_out: amountOut,
     timestamp: BigInt(event.block.timestamp),
@@ -155,15 +141,15 @@ ponder.on("CurveContract:Swap", async ({ event, context }) => {
 });
 
 ponder.on("CurveContract:LiquidityAdded", async ({ event, context }) => {
-  const { poolId, provider, amountA, amountB, liquidity } = event.args;
-  
+  const { poolId, amountA, amountB } = event.args;
+
   await context.db.insert(liquidityEvents).values({
     id: `${event.transaction.hash}-${event.log.logIndex}`,
     pool_id: poolId,
-    provider: provider,
+    provider: event.transaction.from, // sintetis
     amount_a: amountA,
     amount_b: amountB,
-    liquidity: liquidity,
+    liquidity: amountA + amountB, // atau null / hapus kolom jika tak perlu
     timestamp: BigInt(event.block.timestamp),
     block_number: BigInt(event.block.number),
     transaction_hash: event.transaction.hash,
@@ -187,20 +173,16 @@ ponder.on("BalancerContract:PoolCreated", async ({ event, context }) => {
   });
 });
 
-ponder.on("BalancerContract:Swap", async ({ event, context }) => {
-  const { poolId, trader, tokenIn, amountIn, amountOut } = event.args;
-  
-  // Get pool info to determine token_out
-  const pool = await context.db.find(pools, { id: poolId });
-  const tokenOut = tokenIn === pool?.token_a ? pool?.token_b : pool?.token_a;
-  
+ponder.on("BalancerContract:Swapped", async ({ event, context }) => {
+  const { poolId, user, tokenIn, tokenOut, amountIn, amountOut } = event.args;
+
   await context.db.insert(swaps).values({
     id: `${event.transaction.hash}-${event.log.logIndex}`,
     pool_id: poolId,
-    trader: trader,
-    dex_name: "Balancer",
+    trader: user, // dari ABI: 'user'
+    dex_name: "Uniswap",
     token_in: tokenIn,
-    token_out: tokenOut || "0x0000000000000000000000000000000000000000", // fallback
+    token_out: tokenOut, // sudah ada di ABI, tak perlu hitung dari pool
     amount_in: amountIn,
     amount_out: amountOut,
     timestamp: BigInt(event.block.timestamp),
@@ -208,17 +190,16 @@ ponder.on("BalancerContract:Swap", async ({ event, context }) => {
     transaction_hash: event.transaction.hash,
   });
 });
-
 ponder.on("BalancerContract:LiquidityAdded", async ({ event, context }) => {
-  const { poolId, provider, amountA, amountB, liquidity } = event.args;
-  
+  const { poolId, amountA, amountB } = event.args;
+
   await context.db.insert(liquidityEvents).values({
     id: `${event.transaction.hash}-${event.log.logIndex}`,
     pool_id: poolId,
-    provider: provider,
+    provider: event.transaction.from, // sintetis
     amount_a: amountA,
     amount_b: amountB,
-    liquidity: liquidity,
+    liquidity: amountA + amountB, // atau null / hapus kolom jika tak perlu
     timestamp: BigInt(event.block.timestamp),
     block_number: BigInt(event.block.number),
     transaction_hash: event.transaction.hash,

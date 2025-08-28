@@ -8,10 +8,10 @@ An indexer for multiple DEX smart contracts on Sonic Blaze Testnet using Ponder.
 - **RPC URL**: https://rpc.blaze.soniclabs.com
 
 ### Indexed Contracts:
-- **Uniswap**: `0xAF3097d87b080F681d8F134FBc649d87A5F84500`
-- **OneInch**: `0x9Fc1bBfa84B9041dd520BB533bBc2F8845537bBE`
-- **Curve**: `0x0c144C1CA973E36B499d216da6001D3822B15b57`
-- **Balancer**: `0xacC58C9D66c849B7877B857ce00212DD721BCab9`
+- **Uniswap**: `0x50D1672685E594B27F298Ac5bFACa4F3488AAA9c`
+- **OneInch**: `0xA9b3eD890229E575863514ef8464C0e6a771Bc58`
+- **Curve**: `0x03a6FE06D6C0C7c9726Ecd079cD9283A37b4c178`
+- **Balancer**: `0x2B778181dAB6Db356b00931a6c1833E1450f9655`
 
 ## Features
 
